@@ -1,0 +1,86 @@
+{
+  "collection_name": "codebase_hybrid",
+  "requested_count": 5,
+  "found_count": 5,
+  "missing_ids": [],
+  "points": [
+    {
+      "requested_rank": 1,
+      "id": "45e953af-49eb-5dc5-a2c2-f25b82b60197",
+      "payload": {
+        "page_content": "def main():\n    # --- yzwire up all layers ---\n    db = Database()\n    auth = AuthService(db)\n    policy = PermissionPolicy()\n    billing = BillingService(db)\n    audit = AuditLogger()\n    email = EmailClient()\n    slack = SlackWebhook()\n    notifications = NotificationService(email, slack)\n    tasks = TaskService(db, auth, policy, billing, audit, notifications)\n    reports = ReportService(db, policy)\n    scheduler = TaskScheduler(db, billing, audit)\n\n    # --- seed users ---\n    alice = auth.register(\"alice\", \"alice@example.com\", \"pass123\")\n    bob = auth.register(\"bob\", \"bob@example.com\", \"pass456\")\n    admin = auth.register(\"admin\", \"admin@taskapp.dev\", \"adminpass\")\n\n    policy.assign_role(admin, Role.ADMIN)\n    policy.assign_role(alice, Role.MEMBER)\n    policy.assign_role(bob, Role.MEMBER)\n\n    billing.assign_plan(alice, PlanTier.PRO)\n    billing.assign_plan(bob, PlanTier.FREE)\n\n    alice_token = auth.login(\"alice@example.com\", \"pass123\")\n    bob_token = auth.login(\"bob@example.com\", \"pass456\")\n    admin_token = auth.login(\"admin@taskapp.dev\", \"adminpass\")\n\n    # --- seed tasks ---\n    tasks.create_task(alice_token, \"Set up CI pipeline\", \"Configure GitHub Actions for the repo\", Priority.HIGH, tags=[\"devops\"])\n    tasks.create_task(alice_token, \"Write unit tests\", \"Cover auth and task_service modules\", Priority.MEDIUM, tags=[\"testing\"])\n    tasks.create_task(bob_token, \"Design database schema\", \"Plan the production PostgreSQL schema\", Priority.HIGH, tags=[\"database\"])\n\n    # --- complete a task ---\n    alice_tasks = tasks.list_my_tasks(alice_token)\n    tasks.complete_task(alice_token, alice_tasks[0].id)\n\n    # --- set up a recurring scheduled task for alice ---\n    scheduler.add_schedule(\n        owner=alice,\n        title=\"Weekly status report\",\n        description=\"Summarise progress and blockers for the team\",\n        priority=Priority.LOW,\n        interval=RecurrenceInterval.WEEKLY,\n        tags=[\"recurring\"],\n    )\n\n    # --- print summary ---\n    print(\"=== Alice's tasks ===\")\n    for t in tasks.list_my_tasks(alice_token):\n        print(f\"  [{t.status.value}] {t.title} (priority={t.priority.value})\")\n\n    print(\"\\n=== Bob's tasks ===\")\n    for t in tasks.list_my_tasks(bob_token):\n        print(f\"  [{t.status.value}] {t.title} (priority={t.priority.value})\")\n\n    print(\"\\n=== Search 'test' ===\")\n    for t in tasks.search_tasks(alice_token, \"test\"):\n        print(f\"  {t.title}\")\n\n    print(\"\\n=== System report (admin) ===\")\n    r = reports.system_report(admin)\n    print(f\"  Users: {r.total_users}, Tasks: {r.total_tasks}, Done: {r.completed_tasks}\")\n    print(f\"  By priority: {r.tasks_by_priority}\")\n\n    print(\"\\n=== Audit log ===\")\n    for entry in audit.all_entries():\n        print(f\"  [{entry.event_type.value}] actor={entry.actor_id} target={entry.target_id}\")",
+        "metadata": {
+          "source": "C:\\Users\\hp\\Downloads\\eval1\\sample_project\\main.py",
+          "name": "main",
+          "type": "function",
+          "start_line": 23,
+          "end_line": 92,
+          "mtime": 1788349710.6713457
+        }
+      }
+    },
+    {
+      "requested_rank": 2,
+      "id": "d7c28104-a04b-5a54-b725-3630bb43aada",
+      "payload": {
+        "page_content": "class TaskService:\n    \"\"\"All task operations go through here so no check is ever skipped.\"\"\"\n\n    def __init__(\n        self,\n        db: Database,\n        auth: AuthService,\n        policy: PermissionPolicy,\n        billing: BillingService,\n        audit: AuditLogger,\n        notifications: NotificationService,\n    ):\n        self.db = db\n        self.auth = auth\n        self.policy = policy\n        self.billing = billing\n        self.audit = audit\n        self.notifications = notifications\n\n    def create_task(\n        self,\n        token: str,\n        title: str,\n        description: str,\n        priority: Priority = Priority.MEDIUM,\n        tags: list[str] = None,\n    ) -> Task:\n        \"\"\"Create a task owned by the currently logged-in user.\"\"\"\n        user = self.auth.get_current_user(token)\n        self.policy.require(user, \"task:create\")\n        self.billing.check_task_limit(user)\n        task = self.db.create_task(\n            title=title,\n            description=description,\n            owner_id=user.id,\n            priority=priority,\n            tags=tags or [],\n        )\n        self.audit.record(\n            AuditEventType.TASK_CREATED,\n            actor_id=user.id,\n            target_id=task.id,\n            detail=f\"title='{title}' priority='{priority.value}'\",\n        )\n        self.notifications.on_task_created(task, user)\n        return task\n\n    def complete_task(self, token: str, task_id: int) -> Task:\n        \"\"\"Mark a task as done. Only the owner can do this.\"\"\"\n        user = self.auth.get_current_user(token)\n        self.policy.require(user, \"task:complete\")\n        task = self.db.get_task(task_id)\n        if task is None:\n            raise ValueError(f\"Task {task_id} not found\")\n        if task.owner_id != user.id:\n            raise AuthError(\"You can only complete your own tasks\")\n        updated = self.db.update_task_status(task_id, Status.DONE)\n        self.audit.record(\n            AuditEventType.TASK_COMPLETED,\n            actor_id=user.id,\n            target_id=task_id,\n            detail=f\"task_id={task_id}\",\n        )\n        self.notifications.on_task_completed(updated, user)\n        return updated\n\n    def list_my_tasks(self, token: str) -> list[Task]:\n        \"\"\"Return all tasks belonging to the current user.\"\"\"\n        user = self.auth.get_current_user(token)\n        self.policy.require(user, \"task:view\")\n        return self.db.list_tasks(owner_id=user.id)\n\n    def delete_task(self, token: str, task_id: int) -> bool:\n        \"\"\"Delete a task. Only the owner can delete it.\"\"\"\n        user = self.auth.get_current_user(token)\n        self.policy.require(user, \"task:delete\")\n        task = self.db.get_task(task_id)\n        if task is None:\n            raise ValueError(f\"Task {task_id} not found\")\n        if task.owner_id != user.id:\n            raise AuthError(\"You can only delete your own tasks\")\n        deleted = self.db.delete_task(task_id)\n        if deleted:\n            self.audit.record(\n                AuditEventType.TASK_DELETED,\n                actor_id=user.id,\n                target_id=task_id,\n                detail=f\"task_id={task_id}\",\n            )\n            self.notifications.on_task_deleted(task, user)\n        return deleted\n\n    def assign_task(self, token: str, task_id: int, assignee_id: int) -> Task:\n        \"\"\"\n        Reassign a task to another user.\n        Requires task:assign permission (admin only).\n        Updates owner_id so the new owner passes future ownership checks.\n        \"\"\"\n        user = self.auth.get_current_user(token)\n        self.policy.require(user, \"task:assign\")\n        task = self.db.get_task(task_id)\n        if task is None:\n            raise ValueError(f\"Task {task_id} not found\")\n        assignee = self.db.get_user(assignee_id)\n        if assignee is None:\n            raise ValueError(f\"Assignee {assignee_id} not found\")\n        task.owner_id = assignee_id\n        self.audit.record(\n            AuditEventType.TASK_ASSIGNED,\n            actor_id=user.id,\n            target_id=task_id,\n            detail=f\"assigned to user_id={assignee_id}\",\n        )\n        self.notifications.on_task_assigned(task, assignee, user)\n        return task\n\n    def search_tasks(self, token: str, keyword: str) -> list[Task]:\n        \"\"\"Search user's tasks by keyword in title or description.\"\"\"\n        user = self.auth.get_current_user(token)\n        self.policy.require(user, \"task:view\")\n        all_matches = self.db.search_tasks(keyword)\n        return [t for t in all_matches if t.owner_id == user.id]",
+        "metadata": {
+          "source": "C:\\Users\\hp\\Downloads\\eval1\\sample_project\\task_service.py",
+          "name": "TaskService",
+          "type": "class",
+          "start_line": 17,
+          "end_line": 138,
+          "mtime": 1783541686.0
+        }
+      }
+    },
+    {
+      "requested_rank": 3,
+      "id": "7b516363-a31f-5ef8-ac06-2b19e68f3328",
+      "payload": {
+        "page_content": "class AuthService:\n    \"\"\"Handles login and basic access control.\"\"\"\n\n    def __init__(self, db: Database):\n        self.db = db\n        # In-memory session store: token → user_id\n        # In production use JWT or a proper session backend\n        self._sessions: dict[str, int] = {}\n\n    def register(self, username: str, email: str, password: str) -> User:\n        \"\"\"Create a new user. Raises AuthError if email already exists.\"\"\"\n        if self.db.get_user_by_email(email):\n            raise AuthError(f\"Email already registered: {email}\")\n        user = self.db.create_user(username, email)\n        # Store password against user id (plaintext — demo only!)\n        self._passwords = getattr(self, \"_passwords\", {})\n        self._passwords[user.id] = password\n        return user\n\n    def login(self, email: str, password: str) -> str:\n        \"\"\"\n        Validate credentials and return a session token.\n        Token is just the user id as a string — demo only.\n        \"\"\"\n        user = self.db.get_user_by_email(email)\n        if not user:\n            raise AuthError(\"User not found\")\n        stored = getattr(self, \"_passwords\", {}).get(user.id)\n        if stored != password:\n            raise AuthError(\"Invalid password\")\n        token = f\"token-{user.id}\"\n        self._sessions[token] = user.id\n        return token\n\n    def get_current_user(self, token: str) -> User:\n        \"\"\"Resolve a session token to a User. Raises AuthError if invalid.\"\"\"\n        user_id = self._sessions.get(token)\n        if user_id is None:\n            raise AuthError(\"Invalid or expired session token\")\n        user = self.db.get_user(user_id)\n        if not user or not user.is_active:\n            raise AuthError(\"User account is inactive\")\n        return user\n\n    def logout(self, token: str) -> None:\n        \"\"\"Invalidate a session token.\"\"\"\n        self._sessions.pop(token, None)",
+        "metadata": {
+          "source": "C:\\Users\\hp\\Downloads\\eval1\\sample_project\\auth.py",
+          "name": "AuthService",
+          "type": "class",
+          "start_line": 16,
+          "end_line": 62,
+          "mtime": 1788939012.4979577,
+          "mtime_ns": 1788939012497957500
+        }
+      }
+    },
+    {
+      "requested_rank": 4,
+      "id": "2d199999-ad73-54ea-9e62-ccfce727335a",
+      "payload": {
+        "page_content": "\"category\": \"missing_feature\",\n      \"question\": \"Does this application implement a password reset flow?\",\n      \"answerability\": \"feature_absent\",\n      \"reference_answer\": \"No password reset flow is implemented in the current application source. AuthService exposes register, login, get_current_user, and logout, but no reset-password or forgot-password method. The main application wiring also does not expose a password reset endpoint or command. EmailClient and NotificationService handle generic outbound messages and task notifications, not account recovery.\",\n      \"required_facts\": [\n        \"AuthService does not provide a password reset or forgot-password method.\",\n        \"The application wiring does not expose a password reset endpoint or command.\",\n        \"Email and notification code does not implement account recovery.\"\n      ],\n      \"expected_documents\": [],\n      \"context_documents\": [\n        {\n          \"path\": \"auth.py\",\n          \"symbols\": [\n            \"AuthService\"\n          ]\n        },\n        {\n          \"path\": \"main.py\",\n          \"symbols\": [\n            \"main\"\n          ]\n        },\n        {\n          \"path\": \"notifications.py\",\n          \"symbols\": [\n            \"NotificationService\"\n          ]\n        },\n        {\n          \"path\": \"integrations/email_client.py\",\n          \"symbols\": [\n            \"EmailClient\"\n          ]\n        }\n      ],\n      \"evidence_note\": \"Absence was checked across the application's Python source files. The related context files alone do not prove repository-wide absence.\"\n    }\n  ]\n}",
+        "metadata": {
+          "source": "C:\\Users\\hp\\Downloads\\eval1\\sample_project\\golden_dataset.json",
+          "name": "chunk_3",
+          "type": "block",
+          "start_line": 121,
+          "end_line": 160,
+          "mtime": 1789041581.072775,
+          "mtime_ns": 1789041581072774900
+        }
+      }
+    },
+    {
+      "requested_rank": 5,
+      "id": "bdd360b6-30d3-552a-a21a-090b9665a448",
+      "payload": {
+        "page_content": "class AuthError(Exception):\n    \"\"\"Raised when authentication or authorisation fails.\"\"\"\n    pass",
+        "metadata": {
+          "source": "C:\\Users\\hp\\Downloads\\eval1\\sample_project\\auth.py",
+          "name": "AuthError",
+          "type": "class",
+          "start_line": 11,
+          "end_line": 13,
+          "mtime": 1788939012.4979577,
+          "mtime_ns": 1788939012497957500
+        }
+      }
+    }
+  ]
+}

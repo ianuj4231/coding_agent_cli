@@ -1,0 +1,70 @@
+skills:
+  skills_dir: .ia_claude_all_hidden/skills
+
+llm:
+ provider: openrouter        # openai | anthropic
+ model: openrouter/free
+
+
+
+embeddings:
+ provider: huggingface             
+ model: sentence-transformers/all-MiniLM-L6-v2
+ dims: 384
+
+
+
+semantic_cache:
+  enabled: true
+  redis_url: ${REDIS_URL}
+  # Agent scope is separate from both repository domain and LLM model.
+  agent_namespace: coding_agent
+  threshold: 0.60
+  ttl: 600
+
+
+
+
+
+vector_store:
+  provider: qdrant
+  retrieval_mode: hybrid
+
+# Strict mode performs an incremental delta scan before every RAG query. This
+# closes the freshness gap for files changed through a terminal or an editor;
+# agent file tools also do immediate targeted write-through indexing.
+index_freshness:
+  reconcile_before_retrieval: true
+
+
+qdrant:
+ collection_name: codebase_hybrid
+ # Candidates fetched from each dense and sparse index before RRF fusion.
+ hybrid_candidate_k: 40
+
+reranker:
+  enabled: true
+  model: cross-encoder/ms-marco-MiniLM-L6-v2
+  top_n: 5
+  batch_size: 16
+  max_length: 512
+
+chromadb:
+ persist_dir: .ia_claude_all_hidden/chromadb/
+ collection_name: codebase
+
+
+elasticsearch:
+ url: http://localhost:9200
+ index_name: codebase
+
+memory:
+  db_path: .ia_claude_all_hidden/memory.sqlite
+  session_file: .ia_claude_all_hidden/current_session
+  session_registry_db_path: .ia_claude_all_hidden/session_registry.sqlite
+  long_term_store_db_path: .ia_claude_all_hidden/long_term_memory.sqlite
+
+
+
+
+

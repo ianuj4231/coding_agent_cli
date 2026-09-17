@@ -3,7 +3,7 @@ name = "claude-rag-agent"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "I Anuj",email = "ianuj4231@gmail.com"}
+    {name = "I Anuj",email = "ianuj@example.com"}
 ]
 requires-python = ">=3.11,<4.0"
 dependencies = [

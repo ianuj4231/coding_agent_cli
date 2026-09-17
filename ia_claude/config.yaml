@@ -2,13 +2,15 @@ skills:
   skills_dir: .ia_claude_all_hidden/skills
 
 llm:
- provider: openrouter        # openai | anthropic
- model: openrouter/free
+ # provider: openrouter
+ # model: openrouter/free
+ provider: google            # google | openrouter | openai | anthropic
+ model: gemini-3.5-flash-lite
 
 
 
 embeddings:
- provider: huggingface             
+ provider: fastembed
  model: sentence-transformers/all-MiniLM-L6-v2
  dims: 384
 
@@ -19,7 +21,7 @@ semantic_cache:
   redis_url: ${REDIS_URL}
   # Agent scope is separate from both repository domain and LLM model.
   agent_namespace: coding_agent
-  threshold: 0.60
+  threshold: 0.75
   ttl: 600
 
 
@@ -63,8 +65,3 @@ memory:
   session_file: .ia_claude_all_hidden/current_session
   session_registry_db_path: .ia_claude_all_hidden/session_registry.sqlite
   long_term_store_db_path: .ia_claude_all_hidden/long_term_memory.sqlite
-
-
-
-
-

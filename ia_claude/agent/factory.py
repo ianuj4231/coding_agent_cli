@@ -3,6 +3,7 @@ from langchain.agents.middleware import HumanInTheLoopMiddleware, SummarizationM
 
 from ia_claude.agent.tools import create_search_codebase_tool
 from ia_claude.agent.context import AgentContext
+from ia_claude.agent.schemas import AgentResponse
 from ia_claude.agent.memory_tools import remember_user_information
 from ia_claude.agent.memory_prompt import add_long_term_memory_context
 from ia_claude.agent.guardrails import (
@@ -103,29 +104,39 @@ async def build_agent(checkpointer, user_id: str, long_term_store=None):
             },
         }
     )
+    middleware = [
+        add_long_term_memory_context,
+        ContentSafetyMiddleware(),
+        summarization,
+        terminal_approval,
+    ]
 
-    logger.info("Building coding agent with tools and summarization middleware.")
+    logger.info(
+        "Building coding agent: tool_count=%s middleware_count=%s "
+        "response_schema=%s strategy=automatic",
+        len(tools),
+        len(middleware),
+        AgentResponse.__name__,
+    )
 
     agent = create_agent(
         model=llm,
         tools=tools,
+        response_format=AgentResponse,
         system_prompt=full_prompt,
         checkpointer=checkpointer,
         store=long_term_store,
         context_schema=AgentContext,
-        middleware=[
-            add_long_term_memory_context,
-            ContentSafetyMiddleware(),
-            summarization,
-            terminal_approval,
-        ],
+        middleware=middleware,
     )
 
     logger.info(
-        "Coding agent built: agent_id=%s checkpointer_type=%s store_type=%s",
+        "Coding agent built: agent_id=%s checkpointer_type=%s store_type=%s "
+        "response_schema=%s",
         id(agent),
         type(checkpointer).__name__,
         type(long_term_store).__name__ if long_term_store is not None else "None",
+        AgentResponse.__name__,
     )
 
     return agent

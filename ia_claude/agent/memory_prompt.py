@@ -38,13 +38,13 @@ Examples:
 def add_long_term_memory_context(request: ModelRequest[AgentContext]) -> str:
     """Add the LTM policy and current-user memories to the model prompt."""
     base_prompt = request.system_prompt or ""
-    prompt = f"{base_prompt}\n\n{LONG_TERM_MEMORY_PROMPT}"
     context = request.runtime.context
-    if (
-        context is None
-        or not context.memory_enabled
-        or not context.long_term_memories
-    ):
+
+    if context is None or not context.memory_enabled:
+        return base_prompt
+
+    prompt = f"{base_prompt}\n\n{LONG_TERM_MEMORY_PROMPT}"
+    if not context.long_term_memories:
         return prompt
 
     memory_lines = "\n".join(
@@ -65,3 +65,9 @@ def add_long_term_memory_context(request: ModelRequest[AgentContext]) -> str:
 # https://www.youtube.com/watch?v=cUfLrn3TM3M
 
 # https://www.youtube.com/watch?v=qAF1NjEVHhY
+
+
+
+# Memory disabled → base prompt only.
+# Memory enabled, no saved memories → base prompt + LTM policy.
+# Memory enabled with saved memories → base prompt + LTM policy + memories.

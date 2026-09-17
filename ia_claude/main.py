@@ -17,6 +17,10 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from ia_claude.config import config
 from ia_claude.llm.factory import get_llm, get_embedder
+from ia_claude.long_running_tasks.orchestrator import (
+    handle_plan_command,
+    handle_resume_plan_command,
+)
 
 from ia_claude.observability.logger import get_logger
 
@@ -339,6 +343,47 @@ async def run_async():
                     )
 
                     break
+
+                # ---------------------------------------------------------
+                # Plan (generation, validation, approval, and execution)
+                # ---------------------------------------------------------
+                elif user_input.split(maxsplit=1)[0].lower() == "/plan":
+                    command_parts = user_input.split(maxsplit=1)
+                    request = command_parts[1].strip() if len(command_parts) == 2 else ""
+                    if not request:
+                        console.print("[yellow]Usage: /plan <request>[/yellow]")
+                        continue
+
+                    console.print("[dim]Creating and validating plan...[/dim]")
+                    try:
+                        decision = await handle_plan_command(
+                            llm,
+                            request,
+                            console,
+                        )
+                    except Exception as exc:
+                        logger.exception("Plan creation failed")
+                        console.print(f"[red]Could not create plan: {exc}[/red]")
+                        continue
+
+                    if decision == "rejected":
+                        console.print("[yellow]Plan rejected. Nothing will run.[/yellow]")
+
+                # ---------------------------------------------------------
+                # Resume an interrupted approved plan
+                # ---------------------------------------------------------
+                elif user_input.split(maxsplit=1)[0].lower() == "/resume_plan":
+                    command_parts = user_input.split(maxsplit=1)
+                    plan_id = command_parts[1].strip() if len(command_parts) == 2 else ""
+                    if not plan_id:
+                        console.print("[yellow]Usage: /resume_plan <plan_id>[/yellow]")
+                        continue
+
+                    try:
+                        await handle_resume_plan_command(plan_id, console)
+                    except Exception as exc:
+                        logger.exception("Plan resume failed")
+                        console.print(f"[red]Could not resume plan: {exc}[/red]")
 
                 # ---------------------------------------------------------
                 # Ask
@@ -732,6 +777,16 @@ async def run_async():
                     console.print(
                         "[yellow]Unknown command. "
                         "Try:[/yellow]"
+                    )
+
+                    console.print(
+                        "  [bold]/plan <request>[/bold] "
+                        "- create and review a task plan"
+                    )
+
+                    console.print(
+                        "  [bold]/resume_plan <plan_id>[/bold] "
+                        "- resume an interrupted approved plan"
                     )
 
                     console.print(

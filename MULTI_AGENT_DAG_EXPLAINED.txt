@@ -81,7 +81,7 @@ Table 2: tasks
 
 One row represents one unit of work.
 
-    plan_id | task_id | title                 | status
+    plan_id | task_id | title                 | status summary
     --------+---------+-----------------------+---------
     plan-1  | A       | Research backend      | pending
     plan-1  | B       | Research frontend     | pending

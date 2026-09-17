@@ -11,6 +11,7 @@ from langgraph.types import Command
 from langgraph.store.base import Item
 
 from ia_claude.agent.context import AgentContext
+from ia_claude.agent.schemas import AgentResponse
 
 logger = get_logger(__name__)
 console = Console()
@@ -215,7 +216,26 @@ async def handle_query(
             resume_count,
         )
         
-        answer = response["messages"][-1].content
+        structured_response = response.get("structured_response")
+        if isinstance(structured_response, AgentResponse):
+            answer = structured_response.answer
+            logger.info(
+                "Structured agent response accepted: thread_id=%s "
+                "schema=%s answer_length=%s",
+                thread_id,
+                type(structured_response).__name__,
+                len(answer),
+            )
+        else:
+            # Preserve compatibility with old checkpoints or providers that
+            # return a normal final message instead of structured output.
+            answer = response["messages"][-1].content
+            logger.warning(
+                "Structured response unavailable; using final message: "
+                "thread_id=%s received_type=%s",
+                thread_id,
+                type(structured_response).__name__,
+            )
     except Exception as exc:
         logger.exception("Agent error while handling query")
         return f"Error: {exc}"

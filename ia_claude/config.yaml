@@ -51,11 +51,6 @@ reranker:
   batch_size: 16
   max_length: 512
 
-chromadb:
- persist_dir: .ia_claude_all_hidden/chromadb/
- collection_name: codebase
-
-
 elasticsearch:
  url: http://localhost:9200
  index_name: codebase

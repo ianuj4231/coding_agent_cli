@@ -690,58 +690,29 @@ async def run_async():
                         config["vector_store"]["provider"]
                         .lower()
                     )
+                    retrieval_mode = (
+                        config["vector_store"]
+                        .get("retrieval_mode", "")
+                        .lower()
+                    )
 
                     try:
-                        # -------------------------------------------------
-                        # Qdrant
-                        # -------------------------------------------------
-                        if provider == "qdrant":
-                            retrieval_mode = (
-                                config["vector_store"]
-                                .get(
-                                    "retrieval_mode",
-                                    "dense",
-                                )
-                                .lower()
-                            )
-
-                            if retrieval_mode in (
-                                "hybrid",
-                                "sparse",
-                            ):
-                                from ia_claude.context.indexers.hybrid_qdrant import (
-                                    show_index,
-                                )
-
-                            else:
-                                from ia_claude.context.indexers.semantic_qdrant import (
-                                    show_index,
-                                )
-
-                            if retrieval_mode in ("hybrid", "sparse"):
-                                show_index(vector_store, user_id)
-                            else:
-                                show_index(vector_store)
-
-                        # -------------------------------------------------
-                        # Chroma
-                        # -------------------------------------------------
-                        elif provider == "chroma":
-                            from ia_claude.context.indexers.semantic_chroma import (
+                        if (
+                            provider == "qdrant"
+                            and retrieval_mode == "hybrid"
+                        ):
+                            from ia_claude.context.indexers.hybrid_qdrant import (
                                 show_index,
                             )
 
-                            show_index(
-                                vector_store
-                            )
-
-                        # -------------------------------------------------
-                        # Unsupported vector store
-                        # -------------------------------------------------
+                            show_index(vector_store, user_id)
                         else:
                             console.print(
-                                "[red]Unsupported vector "
-                                f"store: {provider}[/red]"
+                                "[red]Unsupported vector-store "
+                                "configuration: "
+                                f"provider={provider}, "
+                                f"retrieval_mode={retrieval_mode}. "
+                                "Use qdrant/hybrid.[/red]"
                             )
 
                     except ImportError as e:

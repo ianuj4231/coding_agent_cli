@@ -9,50 +9,23 @@ def get_retriever():
     """Return the appropriate retriever based on vector store configuration."""
 
     provider = config["vector_store"]["provider"].lower()
+    retrieval_mode = config["vector_store"].get(
+        "retrieval_mode",
+        "",
+    ).lower()
 
     logger.info(
-        f"Using vector store for retrieval: {provider}"
+        f"Using vector store for retrieval: {provider} ({retrieval_mode})"
     )
 
-    if provider == "qdrant":
+    if provider == "qdrant" and retrieval_mode == "hybrid":
+        from .hybrid_qdrant import retrieve
 
-        retrieval_mode = config["vector_store"].get(
-            "retrieval_mode",
-            "dense",
-        ).lower()
-
-        if retrieval_mode in ("hybrid", "sparse"):
-
-            from .hybrid_qdrant import retrieve
-
-            logger.info(
-                f"Using Qdrant {retrieval_mode} retriever"
-            )
-
-            return retrieve
-
-        else:
-
-            from .semantic_qdrant import retrieve
-
-            logger.info(
-                "Using Qdrant dense retriever"
-            )
-
-            return retrieve
-
-    elif provider == "chroma":
-
-        from .semantic_chroma import retrieve
-
-        logger.info(
-            "Using Chroma retriever"
-        )
-
+        logger.info("Using Qdrant hybrid retriever")
         return retrieve
 
-    else:
-
-        raise ValueError(
-            f"Unsupported vector store provider: {provider}"
-        )
+    raise ValueError(
+        "Unsupported vector store configuration: "
+        f"provider={provider!r}, retrieval_mode={retrieval_mode!r}. "
+        "Use provider='qdrant' and retrieval_mode='hybrid'."
+    )

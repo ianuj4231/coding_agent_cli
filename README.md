@@ -1,6 +1,6 @@
-# IA Claude
+# Coding Agent CLI from scratch. 
 
-IA Claude is a terminal-based coding agent for exploring and working with a
+Tnis is a terminal-based coding agent for exploring and working with a
 codebase.
 
 ## Demo videos

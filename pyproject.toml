@@ -17,6 +17,7 @@ dependencies = [
     "langchain-anthropic (>=1.6.1,<2.0.0)",
     "langchain-mcp-adapters (>=0.3.0,<1.0.0)",
     "langchain-huggingface (>=1.2.2,<2.0.0)",
+    "sentence-transformers (>=5.1.2,<5.2.0)",
     "tree-sitter (==0.21.3)",
     "tree-sitter-languages (==1.10.2)",
     "qdrant-client (>=1.19.0,<2.0.0)",

@@ -7,14 +7,14 @@ codebase.
 
 ### Part 1 — Multi-agent architecture and long-running tasks
 
-This walkthrough explains the multi-agent architecture and demonstrates how
+This video walkthrough explains the multi-agent architecture and demonstrates how
 IA Claude plans, coordinates, and executes long-running tasks.
 
 [![Watch Part 1 — Multi-agent architecture and long-running tasks](https://img.youtube.com/vi/Pu3qA_hoLF0/hqdefault.jpg)](https://www.youtube.com/watch?v=Pu3qA_hoLF0)
 
 ### Part 2 — `/ask` mode, short-lived tasks, and memory
 
-This walkthrough demonstrates `/ask` mode for short-lived codebase tasks,
+This video walkthrough demonstrates `/ask` mode for short-lived codebase tasks,
 along with intra-session, cross-session and memory behavior.
 
 [![Watch Part 2 — Ask mode, short-lived tasks, and memory](https://img.youtube.com/vi/j95BKABszpU/hqdefault.jpg)](https://www.youtube.com/watch?v=j95BKABszpU)

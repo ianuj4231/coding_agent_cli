@@ -1,4 +1,4 @@
-Ongoing/Pending works : RAGAS for tests/evals, Graph retrieval for code dependencies. 
+Ongoing works : RAGAS for tests/evals.
 
 # Coding Agent CLI from scratch. 
 

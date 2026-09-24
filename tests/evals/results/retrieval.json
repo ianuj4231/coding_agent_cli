@@ -1,31 +1,31 @@
 [
   {
     "id": "q01_existing_registration_email",
-    "recall_at_80": 1.0,
+    "recall_at_20": 1.0,
     "recall_at_5": 1.0,
     "precision_at_5": 0.2
   },
   {
     "id": "q02_completed_tasks_plan_limit",
-    "recall_at_80": 1.0,
-    "recall_at_5": 0.3333333333333333,
-    "precision_at_5": 0.2
+    "recall_at_20": 1.0,
+    "recall_at_5": 1.0,
+    "precision_at_5": 0.4
   },
   {
     "id": "q03_admin_complete_other_user_task",
-    "recall_at_80": 1.0,
+    "recall_at_20": 0.3333333333333333,
     "recall_at_5": 0.3333333333333333,
     "precision_at_5": 0.2
   },
   {
     "id": "q04_due_schedule_at_plan_cap",
-    "recall_at_80": 1.0,
-    "recall_at_5": 0.5,
-    "precision_at_5": 0.2
+    "recall_at_20": 1.0,
+    "recall_at_5": 1.0,
+    "precision_at_5": 0.4
   },
   {
     "id": "q05_password_reset_support",
-    "recall_at_80": null,
+    "recall_at_20": null,
     "recall_at_5": null,
     "precision_at_5": null
   }

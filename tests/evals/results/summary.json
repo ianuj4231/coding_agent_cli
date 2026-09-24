@@ -1,5 +1,5 @@
 {
-  "mean_recall_at_80": 1.0,
-  "mean_recall_at_5": 0.5416666666666666,
-  "mean_precision_at_5": 0.2
+  "mean_recall_at_20": 0.8333333333333334,
+  "mean_recall_at_5": 0.8333333333333334,
+  "mean_precision_at_5": 0.30000000000000004
 }

@@ -42,7 +42,7 @@ index_freshness:
 qdrant:
  collection_name: codebase_hybrid
  # Total hybrid candidate budget before reranking (split across dense + sparse).
- hybrid_candidate_k: 80
+ hybrid_candidate_k: 20
 
 reranker:
   enabled: true

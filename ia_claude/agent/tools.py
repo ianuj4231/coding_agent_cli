@@ -39,7 +39,7 @@ def create_search_codebase_tool(user_id: str):
             return f"Error: retrieval blocked because the code index is not fresh: {exc}"
 
         retrieve = get_retriever()
-        candidate_k = config["qdrant"].get("hybrid_candidate_k", 80)
+        candidate_k = config["qdrant"].get("hybrid_candidate_k", 20)
         candidates = retrieve(query, user_id=user_id, k=candidate_k)
         retrieved_count = len(candidates)
         try:

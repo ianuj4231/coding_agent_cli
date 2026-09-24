@@ -2,7 +2,7 @@
 
 This suite makes no judge-LLM calls and requires no extra packages. It matches
 the expected file and symbol evidence from `golden_dataset.json` against the
-actual top 80 retrieved chunks and reranked top 5 chunks.
+actual top 20 retrieved chunks and reranked top 5 chunks.
 
 Before a clean run, stop the API and delete any older chunks stored under the
 evaluation user:

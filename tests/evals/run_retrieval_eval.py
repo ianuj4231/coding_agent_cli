@@ -75,7 +75,7 @@ def main() -> None:
         evidence = expected_evidence(case)
         row = {
             "id": case["id"],
-            "recall_at_80": recall(details["candidates"], evidence),
+            "recall_at_20": recall(details["candidates"], evidence),
             "recall_at_5": recall(details["selected"], evidence),
             "precision_at_5": precision_at_5(details["selected"], evidence),
         }
@@ -89,7 +89,7 @@ def main() -> None:
     )
     summary = {
         f"mean_{metric}": sum(values) / len(values)
-        for metric in ("recall_at_80", "recall_at_5", "precision_at_5")
+        for metric in ("recall_at_20", "recall_at_5", "precision_at_5")
         if (values := [row[metric] for row in rows if row[metric] is not None])
     }
     (results_dir / "summary.json").write_text(

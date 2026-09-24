@@ -1,5 +1,3 @@
-Ongoing works : RAGAS for tests/evals.
-
 # Coding Agent CLI from scratch. 
 
 Tnis is a terminal-based coding agent for exploring and working with a

@@ -1,9 +1,6 @@
 # Coding Agent CLI from scratch. 
 
-Tnis is a terminal-based coding agent for exploring and working with a
-codebase.
-
-## Demo videos
+ Built a terminal-based coding agent that explores existing codebases and plans, implements, and builds software projects from scratch
 
 ### Part 1 — Multi-agent architecture and long-running tasks
 

@@ -8,6 +8,9 @@ from rich.console import Console
 from rich.prompt import Prompt
 
 
+DEFAULT_USER_ID = "3b2eb43f-3a0e-41d7-82b7-cde6dc9357d8"
+
+
 def validate_user_id(value: str) -> str:
     """Return a canonical UUID string, or raise ``ValueError``."""
     if not value or not value.strip():

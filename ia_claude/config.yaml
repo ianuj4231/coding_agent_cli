@@ -41,8 +41,8 @@ index_freshness:
 
 qdrant:
  collection_name: codebase_hybrid
- # Candidates fetched from each dense and sparse index before RRF fusion.
- hybrid_candidate_k: 40
+ # Total hybrid candidate budget before reranking (split across dense + sparse).
+ hybrid_candidate_k: 80
 
 reranker:
   enabled: true

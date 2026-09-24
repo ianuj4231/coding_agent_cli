@@ -15,6 +15,7 @@ from ia_claude.llm.factory import get_llm, get_embedder
 from ia_claude.observability.logger import get_logger
 from ia_claude.agent.orchestrator import handle_query
 from ia_claude.agent.context import AgentContext
+from ia_claude.agent.evaluation_trace import finish_trace, start_trace
 from ia_claude.agent.factory import build_agent
 from ia_claude.context.indexers.factory import get_indexer
 from ia_claude.memory.short_term import get_checkpointer_db_path
@@ -41,6 +42,7 @@ from ia_claude.context.indexers.watcher import (
     start_watcher,
     stop_watcher,
 )
+from ia_claude.user_context import DEFAULT_USER_ID
 
 logger = get_logger(__name__)
 
@@ -65,7 +67,7 @@ async def lifespan(app: FastAPI):
         logger.exception("Long-term memory store unavailable during API startup")
 
     # Default bootstrap user for API operations if not provided
-    default_user_id = "api_user"
+    default_user_id = DEFAULT_USER_ID
     
     provider = config["vector_store"]["provider"].lower()
     logger.info(f"API using vector store provider: {provider}")
@@ -126,16 +128,23 @@ app = FastAPI(
 # Pydantic models for requests and responses
 class AskRequest(BaseModel):
     question: str = Field(..., description="The coding question or instruction for the agent.")
-    user_id: Optional[str] = Field("api_user", description="User ID for session and memory scoping.")
+    user_id: Optional[str] = Field(DEFAULT_USER_ID, description="User ID for session and memory scoping.")
     session_id: Optional[str] = Field(None, description="Optional session ID to continue a specific thread.")
+    include_evaluation_details: bool = False
+
+
+class EvaluationDetails(BaseModel):
+    candidates: list[dict[str, str]]
+    selected: list[dict[str, str]]
 
 class AskResponse(BaseModel):
     answer: str
     session_id: str
     user_id: str
+    evaluation_details: Optional[EvaluationDetails] = None
 
 class SessionCreateRequest(BaseModel):
-    user_id: str = Field("api_user", description="User ID owning the new session.")
+    user_id: str = Field(DEFAULT_USER_ID, description="User ID owning the new session.")
 
 class SessionResponse(BaseModel):
     session_id: str
@@ -153,7 +162,12 @@ async def health_check():
     return {"status": "healthy", "service": "ia-claude-api"}
 
 
-@app.post("/ask", response_model=AskResponse, tags=["Agent"])
+@app.post(
+    "/ask",
+    response_model=AskResponse,
+    response_model_exclude_none=True,
+    tags=["Agent"],
+)
 async def ask_question(payload: AskRequest):
     """Ask a coding question to the RAG agent."""
     agent = app_state.get("agent")
@@ -164,12 +178,16 @@ async def ask_question(payload: AskRequest):
     if not agent:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Agent not initialized")
 
-    user_id = payload.user_id or "api_user"
+    user_id = payload.user_id or DEFAULT_USER_ID
     session_id = payload.session_id or get_current_session(user_id)
 
     # Determine memory status
     try:
-        memory_enabled = is_memory_enabled(user_id) and long_term_store is not None
+        memory_enabled = (
+            not payload.include_evaluation_details
+            and is_memory_enabled(user_id)
+            and long_term_store is not None
+        )
     except Exception:
         memory_enabled = False
 
@@ -191,13 +209,14 @@ async def ask_question(payload: AskRequest):
         long_term_memories=memory_texts,
     )
 
+    trace_token = start_trace() if payload.include_evaluation_details else None
     try:
         answer = await handle_query(
             agent,
             payload.question,
             session_id,
-            semantic_cache=semantic_cache,
-            cache_domain=cache_domain,
+            semantic_cache=None if payload.include_evaluation_details else semantic_cache,
+            cache_domain=None if payload.include_evaluation_details else cache_domain,
             memory_enabled=memory_enabled,
             agent_context=agent_context,
             long_term_memories=long_term_memories,
@@ -205,11 +224,16 @@ async def ask_question(payload: AskRequest):
     except Exception as exc:
         logger.exception("Error handling ask request in API")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+    finally:
+        evaluation_details = (
+            finish_trace(trace_token) if trace_token is not None else None
+        )
 
     return AskResponse(
         answer=answer,
         session_id=session_id,
         user_id=user_id,
+        evaluation_details=evaluation_details,
     )
 
 
@@ -241,7 +265,7 @@ async def list_sessions(user_id: str):
 
 
 @app.post("/reindex", response_model=ReindexResponse, tags=["Codebase"])
-async def trigger_reindex(user_id: str = "api_user"):
+async def trigger_reindex(user_id: str = DEFAULT_USER_ID):
     """Trigger a delta-sync reindex of the codebase and invalidate semantic cache."""
     try:
         index_codebase = get_indexer()

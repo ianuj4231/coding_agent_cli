@@ -8,6 +8,8 @@ from ia_claude.context.indexers.freshness import (
 )
 from ia_claude.context.rerankers.cross_encoder import rerank_chunks
 from ia_claude.context.retrievers.factory import get_retriever
+from ia_claude.agent.evaluation_trace import record_retrieval
+from ia_claude.config import config
 from ia_claude.observability.logger import get_logger
 from ia_claude.user_context import validate_user_id
 
@@ -37,15 +39,18 @@ def create_search_codebase_tool(user_id: str):
             return f"Error: retrieval blocked because the code index is not fresh: {exc}"
 
         retrieve = get_retriever()
-        chunks = retrieve(query, user_id=user_id, k=40)
-        retrieved_count = len(chunks)
+        candidate_k = config["qdrant"].get("hybrid_candidate_k", 80)
+        candidates = retrieve(query, user_id=user_id, k=candidate_k)
+        retrieved_count = len(candidates)
         try:
-            chunks = rerank_chunks(query, chunks)
+            chunks = rerank_chunks(query, candidates)
         except Exception:
             logger.exception(
                 "Cross-encoder reranking failed; falling back to RRF top 5"
             )
-            chunks = chunks[:5]
+            chunks = candidates[:5]
+
+        record_retrieval(candidates, chunks)
 
         logger.info(
             "Selected %d of %d retrieved chunks for LLM context",

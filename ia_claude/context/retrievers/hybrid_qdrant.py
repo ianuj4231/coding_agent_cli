@@ -32,10 +32,10 @@ def retrieve(
     """
     Retrieve top-k chunks using dense, sparse, or hybrid mode.
 
-    In hybrid mode, fetch_k candidates are collected independently from the
-    dense and sparse indexes before Qdrant fuses them with RRF. The final
-    result is still limited to k chunks. Dense and sparse-only modes retain
-    their existing behavior.
+    In hybrid mode, ``k`` is the total candidate budget before reranking. It
+    is split evenly between the dense and sparse indexes, then Qdrant fuses
+    both lists with RRF and returns up to ``k`` unique chunks. ``fetch_k`` can
+    override the per-index share when explicitly provided.
 
     The retrieval mode is controlled by config.yaml.
     """
@@ -90,16 +90,12 @@ def retrieve(
     )
 
     if retrieval_mode == RetrievalMode.HYBRID:
-        configured_fetch_k = config["qdrant"].get(
-            "hybrid_candidate_k",
-            20,
-        )
-        candidate_k = configured_fetch_k if fetch_k is None else fetch_k
+        candidate_k = (k + 1) // 2 if fetch_k is None else fetch_k
 
         if not isinstance(candidate_k, int) or isinstance(candidate_k, bool):
             raise ValueError("fetch_k must be an integer.")
-        if candidate_k < k:
-            raise ValueError("fetch_k must be greater than or equal to k.")
+        if candidate_k < 1:
+            raise ValueError("fetch_k must be a positive integer.")
 
         dense_vector = embedder.embed_query(query)
         sparse_vector = sparse_embedder.embed_query(query)

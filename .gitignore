@@ -16,3 +16,6 @@ venv/
 
 
 .ia_claude_all_hidden/
+
+# Evaluation artifacts
+tests/evals/**/.venv/
